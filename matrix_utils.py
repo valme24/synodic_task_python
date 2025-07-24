@@ -69,3 +69,33 @@ def read_matrix_from_file(filename):
         raise MatrixError(f"File not found: {filename}")
 
 
+class ConcurrentMultiplier:
+    """
+    Performs matrix multiplication using multiple threads to speed up.
+    """
+
+    def __init__(self, A, B):
+        if not A or not B or not A[0] or not B[0]:
+            raise MatrixError("Empty matrix provided.")
+        if len(A[0]) != len(B):
+            raise MatrixError("Cannot multiply: Incompatible dimensions.")
+        self.A = A
+        self.B = B
+        self.result = [[0] * len(B[0]) for _ in range(len(A))]
+
+    def compute_cell(self, i, j):
+        sum_val = sum(self.A[i][k] * self.B[k][j] for k in range(len(self.A[0])))
+        self.result[i][j] = sum_val
+        logger.debug(f"Computed result[{i}][{j}] = {sum_val}")
+
+    def multiply(self, max_workers=8):
+        logger.info("Starting concurrent multiplication")
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = []
+            for i in range(len(self.A)):
+                for j in range(len(self.B[0])):
+                    futures.append(executor.submit(self.compute_cell, i, j))
+            for f in futures:
+                f.result()  # Wait for all threads to finish
+        logger.info("Finished concurrent multiplication")
+        return self.result
